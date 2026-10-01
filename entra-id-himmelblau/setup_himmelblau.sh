@@ -9,7 +9,7 @@
 # - Soporte para Ubuntu 22.04 LTS, 24.04 LTS y 25.10
 # - Autenticación SSO, integración PAM / NSS y creación automática de /home
 # - Soporte para Windows Hello para Linux (TPM + PIN)
-# - Accesos directos de Microsoft 365 y claves SSH
+# - Accesos directos de Microsoft 365
 ################################################################################
 
 set -e  # Salir si ocurre algún error inesperado
