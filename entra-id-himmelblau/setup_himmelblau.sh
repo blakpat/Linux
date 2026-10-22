@@ -1,23 +1,16 @@
 #!/bin/bash
 
 ################################################################################
-# Script Unificado de Instalación y Configuración de Himmelblau
-# Integración de Ubuntu (22.04 / 24.04 / 25.10) con Microsoft Entra ID / Azure AD
-#
-# Características:
-# - Interfaz interactiva TUI (Whiptail / ncurses) y soporte desatendido (--auto)
-# - Soporte para Ubuntu 22.04 LTS, 24.04 LTS y 25.10
-# - Autenticación SSO, integración PAM / NSS y creación automática de /home
-# - Soporte para Windows Hello para Linux (TPM + PIN)
-# - Accesos directos de Microsoft 365
+# Script Unificado de Himmelblau para Ubuntu 22.04
+# Instalación, Configuración y Verificación Todo-en-Uno
+# Integración con Azure AD / Microsoft Entra ID
 ################################################################################
 
-set -e  # Salir si ocurre algún error inesperado
+set -e  # Salir si hay algún error
 
-# Colores para output CLI
+# Colores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\1;33m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
@@ -25,12 +18,16 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Variables globales
+# Versión a instalar (sobrescribible: HIMMELBLAU_VERSION=4.0.1 ./setup_himmelblau.sh)
+# 2.1.0 tiene un bug conocido en el registro MDM de Intune (CSR rechazado:
+# 'must be a valid PEM-encoded PKCS#10 ... RSA key of at least 2048 bits').
+# Usar >= 3.x. Última estable disponible: 4.0.2
 HIMMELBLAU_VERSION="${HIMMELBLAU_VERSION:-4.0.2}"
 UBUNTU_VERSION=""
 UBUNTU_CODENAME=""
 BASE_URL=""
-DOMAIN="${DOMAIN:-}"
-ENTRA_USER="${ENTRA_USER:-}"
+DOMAIN=""
+ENTRA_USER=""
 INSTALL_COMPLETED=false
 CONFIG_COMPLETED=false
 
@@ -39,7 +36,7 @@ has_tui() {
     command -v whiptail &>/dev/null && [ -t 0 ] && [ "$TERM" != "dumb" ] && [ -n "$TERM" ]
 }
 
-# Funciones de impresión CLI
+# Funciones de impresión
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -67,7 +64,7 @@ show_banner() {
     echo "╔═══════════════════════════════════════════════════════════════════╗"
     echo "║                                                                   ║"
     echo "║       INSTALADOR UNIFICADO DE HIMMELBLAU                          ║"
-    echo "║       Ubuntu 22.04 / 24.04 / 25.10 + Microsoft Entra ID           ║"
+    echo "║       Ubuntu 22.04 / 24.04 / 25.10 + Azure AD / Entra ID          ║"
     echo "║                                                                   ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -76,7 +73,7 @@ show_banner() {
 # Verificar permisos root
 check_root() {
     if [ "$EUID" -ne 0 ]; then 
-        print_error "Este script debe ejecutarse como root o mediante sudo"
+        print_error "Este script debe ejecutarse como root (sudo)"
         exit 1
     fi
 }
@@ -96,9 +93,9 @@ check_ubuntu_version() {
         UBUNTU_VERSION="ubuntu25.10"
         print_success "Detectado Ubuntu 25.10 (Instalación vía Repositorio Nightly)"
     else
-        print_warning "Este script está optimizado para Ubuntu 22.04, 24.04 o 25.10"
+        print_warning "Este script está diseñado para Ubuntu 22.04, 24.04 o 25.10"
         print_info "Versión detectada en /etc/os-release:"
-        cat /etc/os-release | grep PRETTY_NAME || true
+        cat /etc/os-release | grep PRETTY_NAME
         
         local CONT=false
         if has_tui; then
@@ -117,7 +114,7 @@ check_ubuntu_version() {
         if [ "$CONT" = false ]; then
             exit 1
         fi
-        # Fallback por defecto a 22.04 si se fuerza la ejecución
+        # Fallback por defecto a 22.04 si se fuerza
         UBUNTU_VERSION="ubuntu22.04"
         BASE_URL="https://packages.himmelblau-idm.org/stable/${HIMMELBLAU_VERSION}/deb/${UBUNTU_VERSION}"
     fi
@@ -125,13 +122,17 @@ check_ubuntu_version() {
 
 # Verificar sincronización de tiempo
 check_time_sync() {
+    # Verificar si hay problemas de tiempo que puedan afectar apt
     if ! apt-get update -qq 2>&1 | grep -q "no es válido"; then
         return 0
     fi
     
     print_warning "Detectado posible problema de sincronización de tiempo"
-    print_info "Esto puede causar errores con repositorios apt"
+    print_info "Esto puede causar errores con repositorios apt, pero no afectará"
+    print_info "la instalación de paquetes locales de Himmelblau"
+    echo ""
     print_info "Puedes corregir el tiempo con: sudo timedatectl set-ntp true"
+    echo ""
     sleep 2
 }
 
@@ -186,19 +187,19 @@ install_himmelblau() {
 
     # Lógica bifurcada de instalación
     if [ "$UBUNTU_VERSION" == "ubuntu25.10" ]; then
-        # Instalación vía Repositorio (Ubuntu 25.10)
+        # Instalación vía Repositorio (SOLO Ubuntu 25.10)
         print_step "Modo: Instalación vía Repositorio Nightly (Ubuntu 25.10)"
         
-        # 1. Prerrequisitos
+        # 1. Instalar dependencias previas (curl, gpg, software-properties-common)
         print_info "Instalando prerrequisitos..."
         apt-get install -y -qq curl gpg software-properties-common
-        
+
         # 2. Importar clave GPG
         print_info "Importando clave GPG de Himmelblau..."
         curl -fsSL https://packages.himmelblau-idm.org/himmelblau.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/himmelblau.gpg
         
         # 3. Añadir repositorio
-        print_info "Añadiendo repositorio..."
+        print_info "Añadiendo repositorio Nightly..."
         add-apt-repository -y "deb [arch=amd64] https://packages.himmelblau-idm.org/nightly/latest/deb/${UBUNTU_VERSION}/ ./"
         
         # 4. Actualizar repositorios
@@ -208,20 +209,20 @@ install_himmelblau() {
         # 5. Instalar paquetes
         print_step "Instalando paquetes de Himmelblau desde repositorio..."
         if apt-get install -y himmelblau pam-himmelblau nss-himmelblau himmelblau-sso himmelblau-sshd-config o365; then
-             print_success "Paquetes de Himmelblau instalados correctamente"
+             print_success "Paquetes de Himmelblau instalados correctamente desde repositorio"
         else
              print_error "Error en la instalación desde repositorio"
              exit 1
         fi
 
     else
-        # Instalación vía Paquetes .deb Manuales (Ubuntu 22.04 y 24.04)
+        # Instalación vía Paquetes .deb Manuales (Ubuntu 22.04, 24.04 y otros)
         if [ -z "$BASE_URL" ]; then
              print_error "URL base no definida para esta versión."
              exit 1
         fi
         
-        # Paquetes oficiales a descargar
+        # Paquetes a descargar (conjunto completo desde 3.x: broker/orchestrator/apparmor/policies)
         declare -a PACKAGES=(
             "himmelblau_${HIMMELBLAU_VERSION}-${UBUNTU_VERSION}_amd64.deb"
             "pam-himmelblau_${HIMMELBLAU_VERSION}-${UBUNTU_VERSION}_amd64.deb"
@@ -236,21 +237,25 @@ install_himmelblau() {
             "o365_${HIMMELBLAU_VERSION}-${UBUNTU_VERSION}_amd64.deb"
         )
 
-        # Directorio de descargas
+        # Determinar directorio de descargas
+        # Si se ejecuta con sudo, obtener el usuario real
         if [ -n "$SUDO_USER" ]; then
             DOWNLOAD_DIR="/home/$SUDO_USER/Downloads/himmelblau_packages"
         else
             DOWNLOAD_DIR="$HOME/Downloads/himmelblau_packages"
         fi
 
+        # Crear directorio de descargas si no existe
         mkdir -p "$DOWNLOAD_DIR"
         
+        # Cambiar permisos para que el usuario pueda acceder
         if [ -n "$SUDO_USER" ]; then
             chown -R "$SUDO_USER:$SUDO_USER" "$DOWNLOAD_DIR"
         fi
         
         cd "$DOWNLOAD_DIR"
         print_info "Directorio de descargas: $DOWNLOAD_DIR"
+        print_info "Los paquetes se conservarán para futuras reinstalaciones"
 
         # Descargar paquetes
         print_step "Descargando paquetes de Himmelblau ${HIMMELBLAU_VERSION}..."
@@ -269,25 +274,33 @@ install_himmelblau() {
             fi
         done
 
-        # Actualizar repositorios del sistema
+        # Actualizar lista de paquetes
         print_step "Actualizando lista de paquetes del sistema..."
-        apt-get update -qq 2>/dev/null || true
+        if apt-get update -qq 2>/dev/null; then
+            print_success "Lista de paquetes actualizada"
+        else
+            print_warning "No se pudo actualizar la lista de paquetes (puede ser un problema de sincronización de tiempo)"
+            print_info "Continuando con la instalación de paquetes locales..."
+        fi
 
         # Instalar dependencias necesarias
-        print_step "Instalando dependencias del sistema..."
+        print_step "Instalando dependencias..."
         apt-get install -y -qq libpam0g libnss3 2>/dev/null || true
         print_success "Dependencias verificadas"
 
-        # Limpiar unidades residuales u obsoletas en /etc/systemd/system/
+        # Limpiar posibles unidades residuales u obsoletas en /etc/systemd/system/
+        # En versiones previas (ej. 2.1.0) se copiaban unidades a /etc/systemd/system/
+        # que referencian 'hsm-pin.enc' en lugar de 'hsm-pin-nopcr.enc', lo que bloquea
+        # el arranque en la versión 4.x con error 243/CREDENTIALS.
         if ls /etc/systemd/system/himmelblaud*.service >/dev/null 2>&1; then
-            print_warning "Detectadas unidades obsoletas en /etc/systemd/system/. Limpiando para usar las oficiales..."
+            print_warning "Detectadas unidades obsoletas en /etc/systemd/system/. Limpiando para usar las oficiales de /usr/lib/systemd/system/..."
             mkdir -p /root/himmelblau_legacy_systemd_backup
             mv /etc/systemd/system/himmelblaud*.service /root/himmelblau_legacy_systemd_backup/ 2>/dev/null || true
             systemctl daemon-reload
             print_success "Unidades obsoletas respaldadas en /root/himmelblau_legacy_systemd_backup/"
         fi
 
-        # Instalar paquetes .deb
+        # Instalar paquetes de Himmelblau
         print_step "Instalando paquetes de Himmelblau..."
         if apt install -y ./*.deb; then
             dpkg --configure -a
@@ -295,57 +308,64 @@ install_himmelblau() {
             print_success "Paquetes de Himmelblau instalados correctamente"
         else
             print_error "Error en la instalación de paquetes"
+            print_info "Los paquetes se encuentran en: $DOWNLOAD_DIR"
             exit 1
         fi
         
+        # Volver al directorio original
         cd /
         print_success "Paquetes conservados en: $DOWNLOAD_DIR"
     fi
 
-    # Ubuntu 24.04+: fix pam_lastlog.so
+    # En Ubuntu 24.04+, pam_lastlog.so fue removido. Evitar avisos de fallo en syslog/login
     if grep -q "^session\s\+optional\s\+pam_lastlog\.so" /etc/pam.d/login 2>/dev/null; then
         sed -i 's/^session\s\+optional\s\+pam_lastlog\.so/-session    optional   pam_lastlog.so/' /etc/pam.d/login 2>/dev/null || true
     fi
 
-    # Crear configuración básica si no existe
-    print_step "Preparando configuración inicial..."
+    # Crear configuración básica ANTES de iniciar el servicio
+    print_step "Creando configuración básica..."
     mkdir -p /etc/himmelblau
     
+    # Si no hay configuración previa, crear una por defecto
     if [ ! -f /etc/himmelblau/himmelblau.conf ]; then
-        print_info "Generando plantilla base de configuración..."
+        print_info "Creando configuración por defecto..."
         cat > /etc/himmelblau/himmelblau.conf << 'EOF'
 [global]
-# Configuración inicial de Himmelblau
-# Dominio corporativo (se actualizará durante la configuración)
+# Configuración básica de Himmelblau
+# Este archivo será actualizado durante la configuración
+
+# Dominio corporativo (DEBE SER CONFIGURADO)
 domains = contoso.com
 
 # Grupos locales a los que se añadirán los usuarios
 local_groups = users
 
-# Atributo del directorio para home
+# Atributo del directorio usado para el directorio home
 home_attr = CN
 home_alias = CN
 
-# Usar /etc/skel para nuevos directorios home
+# Usar /etc/skel para directorios home nuevos
 use_etc_skel = true
 
-# Permitir login local por contraseña
+# Permitir inicio de sesión local por consola/GDM con contraseña sin MFA repetitivo
 allow_console_password_only = true
 
-# Deshabilitar flujo MFA experimental
+# Deshabilitar flujo MFA experimental para evitar error de colisión de sondeo y AADSTS500121
 enable_experimental_mfa = false
 
-# Windows Hello para Linux (TPM + PIN)
+# Windows Hello para Linux (TPM + PIN rápido para evitar MFA en cada inicio de sesión)
 enable_hello = true
 hello_pin_min_length = 6
 
 # Aplicar políticas de Azure AD
 apply_policy = true
 EOF
-        print_success "Configuración inicial creada"
+        print_success "Configuración básica creada"
+    else
+        print_info "Usando configuración existente"
     fi
 
-    # Habilitar e iniciar servicios
+    # Habilitar y arrancar los servicios de Himmelblau (daemon, tasks y orchestrator)
     print_step "Habilitando servicios de Himmelblau..."
     systemctl daemon-reload
     systemctl enable himmelblaud himmelblaud-tasks himmelblaud-orchestrator > /dev/null 2>&1 || systemctl enable himmelblaud > /dev/null 2>&1
@@ -355,16 +375,36 @@ EOF
     systemctl restart himmelblaud himmelblaud-tasks himmelblaud-orchestrator 2>/dev/null || systemctl restart himmelblaud
     sleep 2
 
-    # Verificar estado del servicio
+    # Verificar estado del servicio principal
     if systemctl is-active --quiet himmelblaud; then
         print_success "Servicio himmelblaud está activo y ejecutándose"
+        if systemctl is-active --quiet himmelblaud-tasks; then
+            print_success "Servicio himmelblaud-tasks está activo y ejecutándose"
+        fi
     else
-        print_warning "El servicio himmelblaud no arrancó inmediatamente (esto es habitual antes del registro en Entra ID)."
-        
+        print_error "El servicio himmelblaud no se pudo iniciar"
+        print_warning "Mostrando información de diagnóstico..."
+        echo ""
+        echo "═══ Estado del Servicio ═══"
+        systemctl status himmelblaud --no-pager || true
+        echo ""
+        echo "═══ Últimas líneas del log ═══"
+        journalctl -xeu himmelblaud -n 20 --no-pager || true
+        echo ""
+        print_info "Revisa los errores anteriores para diagnosticar el problema"
+        print_info "Posibles causas:"
+        echo "  - Problema de conectividad con Azure AD / Entra ID"
+        echo "  - Unidades obsoletas en /etc/systemd/system/ sobreescribiendo el servicio"
+        echo "  - Configuración de red/firewall"
+        echo "  - Permisos del sistema o conflicto de credenciales TPM"
+        echo ""
+        print_warning "NOTA: Esto es normal en algunos casos. El servicio puede iniciarse"
+        print_warning "correctamente después de la configuración completa."
+        echo ""
         local CONT_SVC=true
         if has_tui; then
             if ! whiptail --title "Aviso de Estado del Servicio" \
-                --yesno "El servicio himmelblaud no arrancó inmediatamente (esto es normal antes de completar el registro en Entra ID).\n\n¿Deseas continuar con la configuración de todas formas?" 12 72; then
+                --yesno "El servicio himmelblaud no arrancó inmediatamente (esto es habitual antes del registro en Entra ID).\n\n¿Deseas continuar con la configuración de todas formas?" 12 72; then
                 CONT_SVC=false
             fi
         else
@@ -376,12 +416,16 @@ EOF
         fi
 
         if [ "$CONT_SVC" = false ]; then
-            print_info "Puedes continuar la configuración más tarde con la opción 3 del menú."
+            print_info "Puedes ejecutar la configuración más tarde con:"
+            print_info "sudo $0  (opción 3 del menú)"
             exit 0
         fi
     fi
 
+    # (Bloque eliminado, movido dentro del if/else de 22.04)
+
     INSTALL_COMPLETED=true
+    
     echo ""
     print_success "¡INSTALACIÓN COMPLETADA EXITOSAMENTE!"
     echo ""
@@ -398,33 +442,32 @@ configure_himmelblau() {
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
 
-    # Verificar instalación previa
+    # Verificar que himmelblaud está instalado
     if [ "$INSTALL_COMPLETED" = false ]; then
         if ! systemctl list-units --type=service 2>/dev/null | grep -q himmelblaud; then
-            print_error "El servicio himmelblaud no está instalado en el sistema."
-            print_info "Por favor, ejecute la instalación primero."
+            print_error "El servicio himmelblaud no está instalado"
+            print_info "Debes ejecutar la instalación primero"
             return 1
         fi
     fi
 
-    # Detener servicio para configurar
-    print_step "Deteniendo servicio temporalmente para aplicar configuración..."
+    # Detener el servicio para reconfigurar
+    print_step "Deteniendo servicio para configuración..."
     systemctl stop himmelblaud 2>/dev/null || true
 
-    # Configuración del dominio corporativo
-    print_step "Configuración del dominio corporativo de Microsoft Entra ID"
+    # Configuración del dominio
+    print_step "Configuración del dominio corporativo"
     echo ""
-    
-    if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "contoso.com" ]; then
-        print_info "Dominio actual detectado: $DOMAIN"
+    if [ -n "$DOMAIN" ]; then
+        print_info "Dominio actual: $DOMAIN"
         local CHANGE_DOM=false
         if has_tui; then
             if whiptail --title "Dominio Entra ID" \
-                --yesno "Dominio configurado actual: ${DOMAIN}\n\n¿Desea modificar el dominio corporativo?" 11 68; then
+                --yesno "Dominio configurado actual: ${DOMAIN}\n\n¿Desea cambiar el dominio corporativo?" 11 68; then
                 CHANGE_DOM=true
             fi
         else
-            read -p "¿Desea cambiar el dominio ${DOMAIN}? (s/N): " -n 1 -r
+            read -p "¿Desea cambiar el dominio? (s/N): " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Ss]$ ]]; then
                 CHANGE_DOM=true
@@ -434,30 +477,32 @@ configure_himmelblau() {
         if [ "$CHANGE_DOM" = true ]; then
             if has_tui; then
                 DOMAIN=$(whiptail --title "Cambio de Dominio" \
-                    --inputbox "Ingrese el nuevo dominio de Microsoft Entra ID (ej. contoso.com):" 11 68 "$DOMAIN" 3>&1 1>&2 2>&3)
+                    --inputbox "Ingrese el nuevo dominio corporativo de Microsoft Entra ID:" 11 68 "$DOMAIN" 3>&1 1>&2 2>&3)
             else
-                read -p "Ingrese el nuevo dominio de Microsoft Entra ID: " DOMAIN
+                read -p "Ingrese el nuevo dominio corporativo: " DOMAIN
             fi
         fi
     else
-        local DEFAULT_SUGG="contoso.com"
         if has_tui; then
             DOMAIN=$(whiptail --title "Dominio Microsoft Entra ID" \
-                --inputbox "Ingrese el dominio corporativo de Microsoft Entra ID / Azure AD:\n(ejemplo: tuempresa.com o tuempresa.onmicrosoft.com)" 12 70 "$DEFAULT_SUGG" 3>&1 1>&2 2>&3)
+                --inputbox "Ingrese el dominio corporativo de Microsoft Entra ID:\n(ej. contoso.com o su-inquilino.onmicrosoft.com)" 12 70 "$DOMAIN" 3>&1 1>&2 2>&3)
         else
-            read -p "Ingrese el dominio corporativo de Microsoft Entra ID (ej. tuempresa.com): " DOMAIN
+            read -p "Ingrese el dominio corporativo de Microsoft Entra ID (ej. contoso.com): " DOMAIN
         fi
     fi
 
+    # Fallback si el usuario dejó el dominio vacío
     if [ -z "$DOMAIN" ]; then
         DOMAIN="contoso.com"
     fi
     print_success "Dominio configurado: $DOMAIN"
 
-    # Configuración del usuario para registro
-    print_step "Usuario para registro en Microsoft Entra ID"
+    # Configuración del usuario
+    print_step "Usuario para registro en Entra ID"
     echo ""
-    
+    print_info "Ingrese el nombre de usuario que se registrará en Azure AD/Entra ID"
+    print_warning "Ejemplo: usuario@${DOMAIN}"
+
     local DEFAULT_UPN=""
     if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
         DEFAULT_UPN="${SUDO_USER}@${DOMAIN}"
@@ -465,15 +510,13 @@ configure_himmelblau() {
         DEFAULT_UPN="usuario@${DOMAIN}"
     fi
 
-    if [ -z "$ENTRA_USER" ]; then
-        if has_tui; then
-            ENTRA_USER=$(whiptail --title "Usuario Entra ID" \
-                --inputbox "Ingrese su usuario de Microsoft Entra ID (UPN corporativo):\nEjemplo: ${DEFAULT_UPN}" 12 70 "$DEFAULT_UPN" 3>&1 1>&2 2>&3)
-        else
-            read -p "Usuario [ej. ${DEFAULT_UPN}]: " ENTRA_USER
-            if [ -z "$ENTRA_USER" ]; then
-                ENTRA_USER="$DEFAULT_UPN"
-            fi
+    if has_tui; then
+        ENTRA_USER=$(whiptail --title "Usuario de Microsoft Entra ID" \
+            --inputbox "Ingrese el usuario de Entra ID / Azure AD (UPN de inicio de sesión):\nEjemplo: ${DEFAULT_UPN}" 12 70 "$DEFAULT_UPN" 3>&1 1>&2 2>&3)
+    else
+        read -p "Usuario [ej. ${DEFAULT_UPN}]: " ENTRA_USER
+        if [ -z "$ENTRA_USER" ]; then
+            ENTRA_USER="$DEFAULT_UPN"
         fi
     fi
 
@@ -484,17 +527,19 @@ configure_himmelblau() {
 
     print_success "Usuario configurado: $ENTRA_USER"
 
-    # Backup de /etc/nsswitch.conf
-    print_step "Configurando archivos NSS y PAM del sistema..."
+    # Crear backup de nsswitch.conf
+    print_step "Configurando archivos del sistema..."
     if ! ls /etc/nsswitch.conf.backup.* > /dev/null 2>&1; then
         cp /etc/nsswitch.conf /etc/nsswitch.conf.backup.$(date +%Y%m%d_%H%M%S)
-        print_success "Backup de /etc/nsswitch.conf creado"
+        print_success "Backup de nsswitch.conf creado"
     fi
 
-    # Configurar /etc/nsswitch.conf
+    # Configurar nsswitch.conf
     cat > /etc/nsswitch.conf << 'EOF'
 # /etc/nsswitch.conf
-# Configurado para integración con Microsoft Entra ID (Himmelblau)
+#
+# Example configuration of GNU Name Service Switch functionality.
+# Configurado por Himmelblau
 
 passwd:         files systemd sss himmelblau
 group:          files systemd sss himmelblau
@@ -511,40 +556,45 @@ rpc:            db files
 
 netgroup:       nis
 EOF
-    print_success "Archivo /etc/nsswitch.conf configurado con soporte para himmelblau"
 
-    # Backup y creación de himmelblau.conf
+    print_success "Archivo /etc/nsswitch.conf configurado"
+
+    # Crear directorio de configuración si no existe
     mkdir -p /etc/himmelblau
+
+    # Crear backup del archivo de configuración si existe
     if [ -f /etc/himmelblau/himmelblau.conf ]; then
         cp /etc/himmelblau/himmelblau.conf /etc/himmelblau/himmelblau.conf.backup.$(date +%Y%m%d_%H%M%S)
+        print_info "Backup de configuración anterior creado"
     fi
 
-    print_step "Escribiendo configuración en /etc/himmelblau/himmelblau.conf..."
+    # Configurar himmelblau.conf
+    print_step "Escribiendo configuración de Himmelblau..."
     cat > /etc/himmelblau/himmelblau.conf << EOF
 [global]
 # Configuración de Himmelblau para ${DOMAIN}
 # Generado automáticamente el $(date)
 
-# Dominio corporativo de Microsoft Entra ID
+# Dominio corporativo de Azure AD / Microsoft Entra ID
 domains = ${DOMAIN}
 
 # Grupos locales a los que se añadirán los usuarios
 local_groups = users
 
-# Mapeo de directorios home
+# Atributo del directorio usado para el directorio home
 home_attr = CN
 home_alias = CN
 
-# Usar plantilla /etc/skel para directorios home
+# Usar /etc/skel para directorios home nuevos
 use_etc_skel = true
 
-# Permitir inicio de sesión local por consola / GDM
+# Permitir inicio de sesión local por consola/GDM con contraseña sin MFA repetitivo
 allow_console_password_only = true
 
-# Deshabilitar flujo MFA experimental
+# Deshabilitar flujo MFA experimental para evitar error de colisión de sondeo y AADSTS500121
 enable_experimental_mfa = false
 
-# Windows Hello para Linux (TPM + PIN rápido para evitar MFA recurrente)
+# Windows Hello para Linux (TPM + PIN rápido para evitar MFA en cada inicio de sesión)
 enable_hello = true
 hello_pin_min_length = 6
 
@@ -552,18 +602,25 @@ hello_pin_min_length = 6
 apply_policy = true
 EOF
 
-    print_success "Archivo /etc/himmelblau/himmelblau.conf configurado correctamente"
+    print_success "Archivo /etc/himmelblau/himmelblau.conf configurado"
+    
+    # Mostrar configuración creada
+    print_info "Configuración creada:"
+    echo ""
+    grep -v "^#" /etc/himmelblau/himmelblau.conf | grep -v "^$" | sed 's/^/   /'
+    echo ""
 
-    # Actualizar configuración PAM y habilitar pam_mkhomedir
-    print_step "Configurando PAM (habilitando pam_mkhomedir para crear /home automáticamente)..."
+    # Actualizar configuración PAM y habilitar creación automática de carpetas home
+    print_step "Actualizando configuración PAM (incluyendo mkhomedir para crear /home automáticamente)..."
     if command -v pam-auth-update &> /dev/null; then
+        # Habilitar perfiles de paquete y pam_mkhomedir
         DEBIAN_FRONTEND=noninteractive pam-auth-update --package --enable mkhomedir
         print_success "Configuración PAM actualizada (pam_himmelblau y pam_mkhomedir habilitados)"
     else
-        print_warning "pam-auth-update no disponible en el sistema"
+        print_warning "pam-auth-update no disponible, omitiendo..."
     fi
 
-    # Reiniciar servicios
+    # Reiniciar servicios de Himmelblau
     print_step "Reiniciando servicios de Himmelblau..."
     systemctl daemon-reload
     systemctl restart himmelblaud himmelblaud-tasks himmelblaud-orchestrator 2>/dev/null || systemctl restart himmelblaud
@@ -572,17 +629,19 @@ EOF
     if systemctl is-active --quiet himmelblaud; then
         print_success "Servicios de Himmelblau reiniciados correctamente"
     else
-        print_warning "El servicio himmelblaud está pendiente del primer registro interactivo"
+        print_error "Error al reiniciar el servicio himmelblaud"
+        systemctl status himmelblaud
+        return 1
     fi
 
-    # Permisos sudo (opcional)
+    # Configuración de sudo (opcional)
     echo ""
-    print_step "Configuración de permisos de administrador (sudo)"
+    print_step "Configuración de permisos sudo (opcional)"
     echo ""
     local GIVE_SUDO=false
     if has_tui; then
         if whiptail --title "Permisos Administrativos" \
-            --yesno "¿Desea otorgar permisos de administrador (sudo) al usuario corporativo ${ENTRA_USER}?" 11 70; then
+            --yesno "¿Desea otorgar permisos de administrador (sudo) a ${ENTRA_USER}?" 11 70; then
             GIVE_SUDO=true
         fi
     else
@@ -594,6 +653,7 @@ EOF
     fi
 
     if [ "$GIVE_SUDO" = true ]; then
+        # Crear archivo de configuración en sudoers.d (incluyendo UPN y nombre corto POSIX)
         SHORT_USER="${ENTRA_USER%%@*}"
         SUDO_FILE="/etc/sudoers.d/himmelblau_${ENTRA_USER//[@.]/_}"
         cat << EOF > "$SUDO_FILE"
@@ -601,15 +661,16 @@ ${ENTRA_USER} ALL=(ALL:ALL) ALL
 ${SHORT_USER} ALL=(ALL:ALL) ALL
 EOF
         chmod 0440 "$SUDO_FILE"
-        print_success "Permisos sudo configurados en $SUDO_FILE para ${ENTRA_USER} (${SHORT_USER})"
+        
+        print_success "Permisos sudo configurados para ${ENTRA_USER} (${SHORT_USER})"
     else
         print_info "Se omitió la configuración de sudo"
     fi
 
-    # Configuración de accesos directos de Microsoft 365 (si el paquete o365 está instalado)
-    print_step "Configurando accesos directos de Microsoft 365..."
-    mkdir -p /etc/skel/Escritorio /etc/skel/Desktop
-    declare -a O365_TARGET_DIRS=("/etc/skel/Escritorio:root" "/etc/skel/Desktop:root")
+    # Configuración de accesos directos de Microsoft 365 (paquete o365 de Himmelblau)
+    print_step "Configurando accesos directos de Microsoft 365 en el escritorio..."
+    mkdir -p /etc/skel/Escritorio
+    declare -a O365_TARGET_DIRS=("/etc/skel/Escritorio:root")
 
     for u_dir in /home/*; do
         [ -d "$u_dir" ] || continue
@@ -630,8 +691,8 @@ EOF
                 dir="${target%%:*}"
                 user="${target##*:}"
                 mkdir -p "$dir"
-                cp -u "$src" "$dir/$out_file" 2>/dev/null || true
-                chmod +x "$dir/$out_file" 2>/dev/null || true
+                cp -u "$src" "$dir/$out_file"
+                chmod +x "$dir/$out_file"
                 chown "$user:$user" "$dir/$out_file" 2>/dev/null || true
                 if [ "$user" != "root" ]; then
                     runuser -u "$user" -- gio set "$dir/$out_file" metadata::trusted true 2>/dev/null || true
@@ -639,10 +700,10 @@ EOF
             done
         fi
     done
-    print_success "Accesos directos de Microsoft 365 configurados"
+    print_success "Accesos directos de Microsoft 365 (Word, Excel, Outlook...) configurados"
 
-    # Generación de claves SSH estándar (RSA 4096)
-    print_step "Comprobando par de claves SSH (RSA 4096)..."
+    # Configuración de clave SSH RSA 4096 para usuarios (Azure DevOps)
+    print_step "Verificando par de claves SSH (RSA 4096) para Azure DevOps..."
     for u_dir in /home/*; do
         [ -d "$u_dir" ] || continue
         u_name=$(basename "$u_dir")
@@ -651,20 +712,39 @@ EOF
         ssh_dir="$u_dir/.ssh"
         key_file="$ssh_dir/id_rsa"
         pub_file="$ssh_dir/id_rsa.pub"
+        cfg_file="$ssh_dir/config"
 
         mkdir -p "$ssh_dir"
         chmod 700 "$ssh_dir"
 
         if [ ! -f "$key_file" ]; then
-            ssh-keygen -t rsa -b 4096 -N "" -C "${u_name}@${DOMAIN}" -f "$key_file" >/dev/null 2>&1 || true
+            ssh-keygen -t rsa -b 4096 -N "" -C "${u_name}@${DOMAIN:-contoso.com}" -f "$key_file" >/dev/null 2>&1 || true
             chmod 600 "$key_file" 2>/dev/null || true
             chmod 644 "$pub_file" 2>/dev/null || true
-            chown -R "$u_name:$u_name" "$ssh_dir" 2>/dev/null || true
-            print_success "Clave SSH generada para $u_name: $pub_file"
+            print_success "Clave SSH RSA 4096 generada para $u_name: $pub_file"
         fi
+
+        cat << 'CONFIG_EOF' > "$cfg_file"
+Host ssh.dev.azure.com
+  HostkeyAlgorithms +ssh-rsa
+  PubkeyAcceptedAlgorithms +ssh-rsa
+  IdentityFile ~/.ssh/id_rsa
+CONFIG_EOF
+        chmod 600 "$cfg_file"
+        chown -R "$u_name:$u_name" "$ssh_dir" 2>/dev/null || true
     done
 
+    mkdir -p /etc/skel/.ssh
+    cat << 'CONFIG_EOF' > /etc/skel/.ssh/config
+Host ssh.dev.azure.com
+  HostkeyAlgorithms +ssh-rsa
+  PubkeyAcceptedAlgorithms +ssh-rsa
+  IdentityFile ~/.ssh/id_rsa
+CONFIG_EOF
+    chmod 600 /etc/skel/.ssh/config
+
     CONFIG_COMPLETED=true
+    
     echo ""
     print_success "¡CONFIGURACIÓN COMPLETADA EXITOSAMENTE!"
     echo ""
@@ -683,10 +763,12 @@ verify_installation() {
 
     local ERRORS=0
 
-    # 1. Servicios
-    print_step "1. Verificando estado de los servicios..."
+    # 1. Verificar servicios de Himmelblau
+    print_step "1. Verificando servicios de Himmelblau..."
     if systemctl is-active --quiet himmelblaud; then
         print_success "Servicio principal (himmelblaud) está activo"
+        local STATUS=$(systemctl show himmelblaud --no-page --property=ActiveState,SubState)
+        echo "   $STATUS"
     else
         print_error "Servicio himmelblaud NO está activo"
         ((ERRORS++))
@@ -694,94 +776,154 @@ verify_installation() {
 
     if systemctl is-active --quiet himmelblaud-tasks; then
         print_success "Servicio de tareas (himmelblaud-tasks) está activo"
+    else
+        print_warning "Servicio himmelblaud-tasks no está activo (se recomienda para asignar grupos locales)"
     fi
 
     if systemctl is-active --quiet himmelblaud-orchestrator; then
         print_success "Servicio orquestador OIDC (himmelblaud-orchestrator) está activo"
     fi
 
-    # 2. Diagnóstico aad-tool
+    # Comprobar que no existan unidades conflictivas en /etc/systemd/system/
+    if ls /etc/systemd/system/himmelblaud*.service >/dev/null 2>&1; then
+        print_error "Se encontraron unidades en /etc/systemd/system/ que pueden sobreescribir y romper la v4 (error 243/CREDENTIALS)"
+        ((ERRORS++))
+    fi
+
+    # 2. Verificar estado de Entra ID vía aad-tool
     echo ""
-    print_step "2. Comprobando herramientas de diagnóstico aad-tool..."
+    print_step "2. Verificando estado del demonio con aad-tool..."
     if command -v aad-tool &>/dev/null; then
         local AAD_STATUS
         AAD_STATUS=$(aad-tool status 2>&1 || true)
-        print_info "aad-tool status: $AAD_STATUS"
+        if echo "$AAD_STATUS" | grep -q "working"; then
+            print_success "aad-tool status: $AAD_STATUS"
+        else
+            print_warning "aad-tool status devolvió: $AAD_STATUS"
+        fi
         
         local TPM_STATUS
         TPM_STATUS=$(aad-tool tpm 2>&1 || true)
-        print_info "aad-tool tpm: $TPM_STATUS"
+        print_info "Estado TPM: $TPM_STATUS"
+    else
+        print_warning "aad-tool no encontrado en el PATH"
     fi
 
-    # 3. NSSwitch
+    # 3. Verificar configuración de nsswitch.conf
     echo ""
     print_step "3. Verificando /etc/nsswitch.conf..."
-    if [ -f /etc/nsswitch.conf ] && grep -q "himmelblau" /etc/nsswitch.conf; then
-        print_success "nsswitch.conf contiene módulo 'himmelblau'"
+    if [ -f /etc/nsswitch.conf ]; then
+        if grep -q "himmelblau" /etc/nsswitch.conf; then
+            print_success "nsswitch.conf contiene configuración de himmelblau"
+            echo ""
+            echo "   Configuración actual:"
+            grep -E "^(passwd|group|shadow):" /etc/nsswitch.conf | sed 's/^/   /'
+        else
+            print_error "nsswitch.conf NO contiene 'himmelblau'"
+            ((ERRORS++))
+        fi
     else
-        print_error "nsswitch.conf NO contiene configuración de himmelblau"
+        print_error "/etc/nsswitch.conf no existe"
         ((ERRORS++))
     fi
 
-    # 4. Configuración
+    # 4. Verificar configuración de himmelblau.conf
     echo ""
     print_step "4. Verificando /etc/himmelblau/himmelblau.conf..."
     if [ -f /etc/himmelblau/himmelblau.conf ]; then
-        local CONF_DOMAIN
-        CONF_DOMAIN=$(grep -E "^domains? =" /etc/himmelblau/himmelblau.conf | head -1 | cut -d'=' -f2 | tr -d ' ')
-        print_success "Dominio configurado en archivo: $CONF_DOMAIN"
+        print_success "Archivo de configuración existe"
+        
+        # Extraer dominio configurado
+        local CONF_DOMAIN=$(grep -E "^domains? =" /etc/himmelblau/himmelblau.conf | head -1 | cut -d'=' -f2 | tr -d ' ')
+        if [ -n "$CONF_DOMAIN" ]; then
+            print_success "Dominio configurado: $CONF_DOMAIN"
+        else
+            print_error "No se encontró dominio configurado"
+            ((ERRORS++))
+        fi
+        
+        echo ""
+        echo "   Configuración actual:"
+        grep -v "^#" /etc/himmelblau/himmelblau.conf | grep -v "^$" | sed 's/^/   /'
     else
-        print_error "/etc/himmelblau/himmelblau.conf no encontrado"
+        print_error "/etc/himmelblau/himmelblau.conf no existe"
         ((ERRORS++))
     fi
 
-    # 5. PAM mkhomedir
+    # 5. Verificar configuración PAM (mkhomedir)
     echo ""
-    print_step "5. Verificando creación automática de carpetas home (pam_mkhomedir)..."
+    print_step "5. Verificando configuración PAM (creación automática de /home)..."
     if grep -q "pam_mkhomedir.so" /etc/pam.d/common-session 2>/dev/null; then
-        print_success "pam_mkhomedir habilitado en /etc/pam.d/common-session"
+        print_success "pam_mkhomedir está habilitado en /etc/pam.d/common-session"
     else
-        print_warning "pam_mkhomedir no está activo (se puede activar con: sudo pam-auth-update --enable mkhomedir)"
+        print_warning "pam_mkhomedir NO está habilitado (los usuarios Entra ID nuevos no tendrán /home creado automáticamente)"
+        print_info "Puedes habilitarlo ejecutando: sudo pam-auth-update --enable mkhomedir"
     fi
+
+    # 6. Verificar paquetes instalados
+    echo ""
+    print_step "6. Verificando paquetes instalados..."
+    local PACKAGES=("himmelblau" "pam-himmelblau" "nss-himmelblau" "himmelblau-sso" "himmelblau-broker" "himmelblau-orchestrator" "himmelblau-apparmor" "himmelblau-sshd-config")
+    for pkg in "${PACKAGES[@]}"; do
+        if dpkg -l 2>/dev/null | grep -q -E "^ii\s+${pkg}(:[^ ]+)?\s"; then
+            local VERSION=$(dpkg -l 2>/dev/null | grep -E "^ii\s+${pkg}(:[^ ]+)?\s" | awk '{print $3}')
+            print_success "$pkg instalado (versión: $VERSION)"
+        else
+            print_warning "$pkg no detectado o en estado incompleto"
+        fi
+    done
+
+    # 7. Verificar logs recientes del servicio
+    echo ""
+    print_step "7. Últimas líneas del log del servicio:"
+    echo ""
+    journalctl -u himmelblaud -n 10 --no-pager 2>/dev/null | sed 's/^/   /' || print_warning "No se pudieron leer los logs"
 
     # Resumen
     echo ""
     echo "═══════════════════════════════════════════════════════════════"
     if [ $ERRORS -eq 0 ]; then
         echo -e "${GREEN}✓ VERIFICACIÓN COMPLETADA SIN ERRORES${NC}"
-        print_success "Himmelblau está correctamente integrado en el sistema."
+        echo "═══════════════════════════════════════════════════════════════"
+        echo ""
+        print_success "La instalación de Himmelblau es correcta"
     else
-        echo -e "${RED}✗ SE ENCONTRARON $ERRORS ERROR(ES)${NC}"
+        echo -e "${RED}✗ ENCONTRADOS $ERRORS ERROR(ES)${NC}"
+        echo "═══════════════════════════════════════════════════════════════"
+        echo ""
+        print_warning "Se encontraron $ERRORS error(es) en la configuración"
     fi
-    echo "═══════════════════════════════════════════════════════════════"
     echo ""
 
-    # Prueba opcional de resolución de usuario
-    if [ $ERRORS -eq 0 ] && [ -n "$ENTRA_USER" ]; then
-        local TEST_USER=false
-        if has_tui; then
-            if whiptail --title "Prueba de Integración Entra ID" \
-                --yesno "¿Desea probar la resolución y mapeo del usuario ${ENTRA_USER} en el sistema?" 10 70; then
-                TEST_USER=true
-            fi
-        else
-            read -p "¿Desea probar la resolución de ${ENTRA_USER}? (s/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Ss]$ ]]; then
-                TEST_USER=true
-            fi
-        fi
-
-        if [ "$TEST_USER" = true ]; then
-            print_info "Ejecutando: id $ENTRA_USER"
-            if id "$ENTRA_USER" 2>/dev/null; then
-                print_success "¡Usuario encontrado y mapeado en NSS!"
+    # Prueba de conectividad / usuario (opcional)
+    if [ $ERRORS -eq 0 ]; then
+        if [ -n "$ENTRA_USER" ]; then
+            local TEST_USER=false
+            if has_tui; then
+                if whiptail --title "Prueba de Integración Entra ID" \
+                    --yesno "¿Desea probar la resolución y mapeo del usuario ${ENTRA_USER} en el sistema?" 10 70; then
+                    TEST_USER=true
+                fi
             else
-                print_info "Probando: getent passwd $ENTRA_USER"
-                if getent passwd "$ENTRA_USER" 2>/dev/null; then
-                    print_success "¡Usuario reconocido correctamente en Entra ID!"
+                read -p "¿Desea probar la resolución de ${ENTRA_USER}? (s/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Ss]$ ]]; then
+                    TEST_USER=true
+                fi
+            fi
+
+            if [ "$TEST_USER" = true ]; then
+                print_info "Probando: id $ENTRA_USER"
+                if id "$ENTRA_USER" 2>/dev/null; then
+                    print_success "¡Usuario encontrado y mapeado correctamente en el sistema!"
                 else
-                    print_warning "No se encontró el usuario. Verifica que el dominio y UPN son correctos en tu tenant."
+                    print_warning "No se pudo encontrar el usuario con 'id'"
+                    print_info "Probando: getent passwd $ENTRA_USER"
+                    if getent passwd "$ENTRA_USER" 2>/dev/null; then
+                        print_success "¡Usuario encontrado en Entra ID / NSS!"
+                    else
+                        print_warning "No se encontró el usuario. Comprueba que el dominio y UPN son correctos."
+                    fi
                 fi
             fi
         fi
@@ -801,7 +943,7 @@ uninstall_himmelblau() {
     echo -e "${RED}╚═══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     
-    print_warning "Esta acción eliminará Himmelblau y revertirá los cambios del sistema."
+    print_warning "Esta acción eliminará Himmelblau y sus configuraciones del sistema"
     echo ""
     local CONFIRM_UNINSTALL=false
     if has_tui; then
@@ -818,7 +960,7 @@ uninstall_himmelblau() {
     fi
 
     if [ "$CONFIRM_UNINSTALL" = false ]; then
-        print_info "Desinstalación cancelada."
+        print_info "Desinstalación cancelada"
         return 0
     fi
     
@@ -832,10 +974,19 @@ uninstall_himmelblau() {
     
     # Desinstalar paquetes
     print_step "2. Desinstalando paquetes de Himmelblau..."
+    
     local PACKAGES_TO_REMOVE=(
-        "himmelblau" "pam-himmelblau" "nss-himmelblau" "himmelblau-sso"
-        "himmelblau-sso-policies" "himmelblau-broker" "himmelblau-orchestrator"
-        "himmelblau-apparmor" "himmelblau-sshd-config" "himmelblau-qr-greeter" "o365"
+        "himmelblau"
+        "pam-himmelblau"
+        "nss-himmelblau"
+        "himmelblau-sso"
+        "himmelblau-sso-policies"
+        "himmelblau-broker"
+        "himmelblau-orchestrator"
+        "himmelblau-apparmor"
+        "himmelblau-sshd-config"
+        "himmelblau-qr-greeter"
+        "o365"
     )
     local REMOVED_COUNT=0
     
@@ -851,33 +1002,46 @@ uninstall_himmelblau() {
     if [ $REMOVED_COUNT -gt 0 ]; then
         print_success "Eliminados $REMOVED_COUNT paquetes"
         apt-get autoremove -y > /dev/null 2>&1 || true
+    else
+        print_info "No se encontraron paquetes instalados"
     fi
     
     # Restaurar nsswitch.conf
-    print_step "3. Restaurando /etc/nsswitch.conf..."
+    print_step "3. Restaurando archivos de configuración del sistema..."
+    
     LATEST_BACKUP=$(ls -t /etc/nsswitch.conf.backup.* 2>/dev/null | head -1)
     if [ -n "$LATEST_BACKUP" ]; then
         cp "$LATEST_BACKUP" /etc/nsswitch.conf
-        print_success "Archivo /etc/nsswitch.conf restaurado desde copia de seguridad"
+        print_success "Archivo /etc/nsswitch.conf restaurado desde backup"
     else
+        print_warning "No se encontró backup de nsswitch.conf"
+        print_info "Eliminando configuración de Himmelblau manualmente..."
+        
+        # Restaurar configuración por defecto de Ubuntu
         cat > /etc/nsswitch.conf << 'EOF'
 # /etc/nsswitch.conf
+#
+# Example configuration of GNU Name Service Switch functionality.
+
 passwd:         files systemd
 group:          files systemd
 shadow:         files
 gshadow:        files
+
 hosts:          files mdns4_minimal [NOTFOUND=return] dns
 networks:       files
+
 protocols:      db files
 services:       db files
 ethers:         db files
 rpc:            db files
+
 netgroup:       nis
 EOF
-        print_success "Configuración por defecto de Ubuntu restaurada"
+        print_success "Configuración por defecto restaurada"
     fi
     
-    # Manejar archivos de configuración
+    # Manejar archivos de configuración de Himmelblau
     echo ""
     local DEL_CONFIG=false
     if has_tui; then
@@ -896,12 +1060,19 @@ EOF
     if [ "$DEL_CONFIG" = true ]; then
         print_step "4. Eliminando archivos de configuración..."
         if [ -d /etc/himmelblau ]; then
+            # Crear backup final antes de eliminar
             BACKUP_DIR="/root/himmelblau_backup_$(date +%Y%m%d_%H%M%S)"
             mkdir -p "$BACKUP_DIR"
             cp -r /etc/himmelblau "$BACKUP_DIR/" 2>/dev/null || true
+            print_info "Backup final guardado en: $BACKUP_DIR"
+            
             rm -rf /etc/himmelblau
-            print_success "Archivos de configuración respaldados en $BACKUP_DIR y eliminados"
+            print_success "Archivos de configuración eliminados"
+        else
+            print_info "No se encontraron archivos de configuración"
         fi
+    else
+        print_info "Archivos de configuración conservados en /etc/himmelblau"
     fi
     
     # Manejar paquetes descargados
@@ -930,19 +1101,33 @@ EOF
         if [ "$DEL_PKGS" = true ]; then
             rm -rf "$DOWNLOAD_DIR"
             print_success "Paquetes descargados eliminados"
+        else
+            print_info "Paquetes conservados en: $DOWNLOAD_DIR"
         fi
     fi
     
-    # Limpiar archivos sudoers
-    print_step "5. Limpiando configuraciones sudo..."
-    rm -f /etc/sudoers.d/himmelblau_* 2>/dev/null || true
-    print_success "Configuraciones sudo eliminadas"
+    # Limpiar archivos sudo si existen
+    print_step "5. Limpiando configuraciones sudo de Himmelblau..."
+    SUDO_FILES=$(ls /etc/sudoers.d/himmelblau_* 2>/dev/null)
+    if [ -n "$SUDO_FILES" ]; then
+        rm -f /etc/sudoers.d/himmelblau_*
+        print_success "Configuraciones sudo eliminadas"
+    else
+        print_info "No se encontraron configuraciones sudo"
+    fi
     
+    # Resumen final
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}           DESINSTALACIÓN COMPLETADA${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
-    print_success "Himmelblau ha sido desinstalado del sistema."
+    echo ""
+    print_success "Himmelblau ha sido desinstalado del sistema"
+    echo ""
+    print_info "Archivos que pueden quedar:"
+    echo "   - Backups en /etc/nsswitch.conf.backup.*"
+    echo "   - Backups en /etc/himmelblau/*.backup.* (si no eliminaste configuración)"
+    echo "   - Backup final en /root/himmelblau_backup_* (si elegiste eliminar config)"
     echo ""
 }
 
@@ -954,29 +1139,33 @@ show_final_summary() {
     echo ""
     echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║                                                                   ║${NC}"
-    echo -e "${GREEN}║        🎉 INSTALACIÓN Y CONFIGURACIÓN COMPLETADA 🎉               ║${NC}"
+    echo -e "${GREEN}║        🎉 INSTALACIÓN COMPLETADA EXITOSAMENTE 🎉                  ║${NC}"
     echo -e "${GREEN}║                                                                   ║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     print_info "Resumen de la configuración:"
+    echo ""
     echo "   🌐 Dominio:  $DOMAIN"
     echo "   👤 Usuario:  $ENTRA_USER"
-    echo "   ✅ Servicio: $(systemctl is-active himmelblaud 2>/dev/null || echo 'activo')"
+    echo "   ✅ Servicio: $(systemctl is-active himmelblaud 2>/dev/null || echo 'inactivo')"
     echo ""
     echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${NC}"
     echo -e "${YELLOW}                    PASOS SIGUIENTES${NC}"
     echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
-    print_info "1. Probar autenticación del usuario en el sistema:"
+    print_info "1. Probar autenticación del usuario:"
     echo "   getent passwd ${ENTRA_USER}"
     echo ""
     print_info "2. Para iniciar sesión gráficamente:"
-    echo "   - Cierra la sesión actual (o reinicia el equipo)"
-    echo "   - En la pantalla de login (GDM), ingresa: ${ENTRA_USER}"
-    echo "   - Introduce tu contraseña de Microsoft Entra ID / Azure AD"
+    echo "   - Cierra sesión del usuario actual"
+    echo "   - En la pantalla de login, ingresa: ${ENTRA_USER}"
+    echo "   - Usa tu contraseña de Azure AD/Entra ID"
     echo ""
-    print_warning "IMPORTANTE: Asegúrate de disponer de una cuenta local con permisos sudo"
-    print_warning "activa antes de cerrar sesión para mantenimiento de emergencia."
+    print_info "3. Si es necesario, reinicia el sistema:"
+    echo "   sudo reboot"
+    echo ""
+    print_warning "IMPORTANTE: Asegúrate de tener otro usuario con sudo activo"
+    print_warning "antes de cerrar sesión, por si hay problemas."
     echo ""
 }
 
@@ -1010,7 +1199,7 @@ main() {
     check_time_sync
     check_installation_status
 
-    # Modo desatendido / automatizado (--auto o -a)
+    # Si se pasa argumento --auto, ejecutar instalación completa
     if [ "$1" = "--auto" ] || [ "$1" = "-a" ]; then
         print_info "Modo automático activado"
         install_himmelblau
@@ -1033,6 +1222,7 @@ main() {
                 "5" "Desinstalar Himmelblau completamente" \
                 "6" "Salir" 3>&1 1>&2 2>&3)
             
+            # Si el usuario pulsa Cancelar o ESC
             if [ $? -ne 0 ]; then
                 print_info "Operación cancelada por el usuario. Saliendo..."
                 exit 0
@@ -1076,5 +1266,5 @@ main() {
     done
 }
 
-# Ejecutar script
+# Ejecutar script principal
 main "$@"
