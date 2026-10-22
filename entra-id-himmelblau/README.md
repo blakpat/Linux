@@ -96,6 +96,28 @@ Available environment variables:
 
 ---
 
+## 🔐 Entra ID First-Time Login & Mobile QR Flow
+
+When a user logs in for the first time on **Ubuntu Desktop (GDM)** or via virtual console:
+
+1. **User Identification**: Select "Not listed?" or enter the corporate UPN (`user@yourcompany.com`) and password.
+2. **Device Authorization Grant (DAG)**: Himmelblau displays an interactive QR code and one-time verification code.
+3. **MFA Approval**: The user scans the QR code with their smartphone (Microsoft Authenticator / Camera) or navigates to `https://microsoft.com/devicelogin` and enters the code.
+4. **TPM 2.0 PIN Registration**: Once approved, Himmelblau registers a **Windows Hello PIN for Linux** (sealed in TPM 2.0) for fast passwordless/MFA-free unlock on subsequent logins.
+5. **Auto-provisioning**: PAM creates `/home/<user>` dynamically using `pam_mkhomedir`.
+
+### 🖥️ Ubuntu Desktop (GDM) First-Time Enrollment
+<p align="center">
+  <img src="docs/images/ubuntu_gdm_login_qr.png" alt="Ubuntu Desktop GDM First-time Login with Entra ID QR and PIN" width="880">
+</p>
+
+### 💻 Terminal / Console (TTY) Login Flow
+<p align="center">
+  <img src="docs/images/login_qr_flow.png" alt="Microsoft Entra ID Device Login & QR Code Authentication" width="880">
+</p>
+
+---
+
 ## 🔍 Verification & Health Check
 
 Run the standalone verification script at any time to audit system health:
