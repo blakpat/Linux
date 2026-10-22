@@ -19,6 +19,7 @@ A diferencia de la versión básica, este complemento añade herramientas práct
 - 🎨 **Colores personalizados para cada categoría**: Asigna el color que quieras a cada grupo (por ejemplo: rojo para *Producción*, verde para *Desarrollo*, azul para *Infraestructura*).
 - 👁️ **Ocultar categorías enteras**: ¿Tienes grupos que no usas a menudo? Oculta o muestra categorías con un clic sin necesidad de borrar los perfiles.
 - 🌐 **Selector de idioma en la barra superior**: Cambia el idioma de la pantalla de inicio al instante (**Español**, Inglés, Francés, Alemán, Portugués o Italiano) con opción de sincronizarlo con el resto de Tabby.
+- 🔒 **Modo Privacidad (Pixelar datos sensibles)**: Botón directo en la cabecera (icono 👁️) para desenfocar al instante todos los nombres de conexiones, IPs, hosts y usuarios. Perfecto para compartir pantalla en Teams, Zoom, streaming o capturas sin filtrar información confidencial.
 - 🖱️ **Cierre automático inteligente**: Al hacer clic fuera de las opciones o pulsar la tecla `Esc`, los menús y paneles se cierran solos.
 - 🔍 **Buscador rápido**: Escribe el nombre del servidor o IP y pulsa `Enter` para conectar inmediatamente.
 
@@ -69,6 +70,11 @@ En Tabby, pulsa en el botón **`+`** (Nueva pestaña) y selecciona **Homepage**,
 - **Clic**: Haz clic sobre cualquier tarjeta de conexión para abrir la sesión.
 - **Búsqueda**: Escribe en la barra de búsqueda y pulsa `Enter` para conectar al primer resultado filtrado.
 - **Opciones de conexión**: Haz clic en el botón de tres puntos `⋮` de cada tarjeta para editar, duplicar o eliminar el perfil.
+
+### 6. Ocultar o pixelar datos para capturas / compartir pantalla
+- Pulsa el botón **Pixelar** (icono de ojo 👁️) en la barra superior.
+- Al activarse, el botón se resaltará en color ámbar y todos los nombres, IPs, hosts y usuarios quedarán desenfocados.
+- Vuelve a pulsarlo cuando quieras quitar el filtro de privacidad. El estado se recuerda para la próxima sesión.
 
 ---
 
