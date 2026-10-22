@@ -1,0 +1,38 @@
+{
+  "name": "tabby-connection-homepage-pro",
+  "version": "1.3.0",
+  "description": "Enhanced Connection Homepage for Tabby Terminal with Category Management, Custom Colors, I18n Multi-language support and sleek Modern UI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blakpat/Linux.git",
+    "directory": "tabby-connection-homepage-pro"
+  },
+  "homepage": "https://github.com/blakpat/Linux/tree/main/tabby-connection-homepage-pro",
+  "author": {
+    "name": "blakpat",
+    "url": "https://github.com/blakpat"
+  },
+  "license": "AGPL-3.0",
+  "keywords": [
+    "tabby-plugin",
+    "tabby",
+    "terminal",
+    "connection",
+    "homepage",
+    "dashboard",
+    "profiles"
+  ],
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@biesbjerg/ngx-translate-extract-marker": "^1.0.0",
+    "fuse.js": "^7.3.0",
+    "js-yaml": "^4.1.0",
+    "natural-orderby": "^5.0.0",
+    "svg-inline-loader": "^0.8.2",
+    "uuid": "^13.0.0"
+  }
+}

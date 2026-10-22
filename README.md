@@ -16,6 +16,11 @@ A curated collection of production-ready automation scripts, endpoint integratio
 - **Description**: Lightweight native GNOME / AppIndicator tray tool & floating widget that moves cursor pixels imperceptibly to prevent screen lock and keep Teams/Slack active.
 - **Features**: Tray toggle (`🟢 ON` / `⚪ OFF`), configurable intervals (10s-5m), smart idle detection, CLI commands (`--toggle`, `--move-now`), and autostart.
 
+### ⚡ [Tabby Connection Homepage Pro](tabby-connection-homepage-pro/)
+- **Path**: `tabby-connection-homepage-pro/install.sh`
+- **Description**: Enhanced connection homepage plugin for Tabby Terminal with modern UI, collapsible categories, custom category color pickers, category visibility toggles, multi-language support (i18n), and click-outside dismissal.
+- **Installation**: 1-click automated installer (`./install.sh`) or symlink development mode (`./install.sh --link`).
+
 ---
 
 ## 🛠️ Usage & Contributions

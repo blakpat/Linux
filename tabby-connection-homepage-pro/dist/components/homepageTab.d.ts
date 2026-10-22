@@ -1,0 +1,34 @@
+import { Injector, OnInit, ElementRef, AfterViewInit } from '@angular/core';
+import Fuse from 'fuse.js';
+import { BaseTabComponent, ProfilesService, NotificationsService } from 'tabby-core';
+import { ProfileManagementService } from 'services/profileManagementService';
+import { TranslateService } from "tabby-core";
+import { MyLogger } from 'services/myLogService';
+export declare class HomepageTabComponent extends BaseTabComponent implements OnInit, AfterViewInit {
+    private profilesService;
+    private profileMgr;
+    private translate;
+    private logger;
+    private notificationService;
+    searchInput: ElementRef<HTMLInputElement>;
+    connections: any[];
+    groups: any[];
+    allGroups: any[];
+    searchQuery: string;
+    fuse: Fuse<any> | null;
+    searchDebounceTimer: any;
+    constructor(profilesService: ProfilesService, profileMgr: ProfileManagementService, translate: TranslateService, logger: MyLogger, injector: Injector, notificationService: NotificationsService);
+    ngOnInit(): Promise<void>;
+    ngAfterViewInit(): void;
+    refreshGroups(refreshAll?: boolean): Promise<void>;
+    onCompositionEnd(event: any): void;
+    searchConnections(): void;
+    openConnection(conn: any): void;
+    createConnection(): Promise<void>;
+    editConnection(conn: any): Promise<void>;
+    deleteConnection(conn: any): Promise<void>;
+    cloneConnection(connection: any): Promise<void>;
+    refreshData(): Promise<void>;
+    onSearchEnter(): void;
+    onQuickConnect(): Promise<void>;
+}
