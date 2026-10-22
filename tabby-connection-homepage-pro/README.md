@@ -11,6 +11,16 @@ It allows you to effortlessly manage hundreds of connections grouped into catego
 
 ---
 
+## 📸 Preview
+
+<p align="center">
+  <img src="assets/dashboard-preview.png" alt="Tabby Connection Homepage Pro Dashboard Preview" width="100%"/>
+</p>
+
+*Interactive dashboard with custom category colors, active privacy blur mode, and multi-language support.*
+
+---
+
 ## ✨ Features & Enhancements
 
 Unlike the basic plugin, this version introduces essential day-to-day productivity features:

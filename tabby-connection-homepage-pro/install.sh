@@ -74,12 +74,14 @@ else
     cp "$SCRIPT_DIR/package.json" "$PLUGIN_TARGET_DIR/"
     cp "$SCRIPT_DIR/LICENSE" "$PLUGIN_TARGET_DIR/" 2>/dev/null || true
     cp "$SCRIPT_DIR/README.md" "$PLUGIN_TARGET_DIR/" 2>/dev/null || true
+    cp -r "$SCRIPT_DIR/assets" "$PLUGIN_TARGET_DIR/" 2>/dev/null || true
 
     mkdir -p "$PLUGIN_PRO_TARGET_DIR"
     cp -r "$SCRIPT_DIR/dist" "$PLUGIN_PRO_TARGET_DIR/"
     cp "$SCRIPT_DIR/package.json" "$PLUGIN_PRO_TARGET_DIR/"
     cp "$SCRIPT_DIR/LICENSE" "$PLUGIN_PRO_TARGET_DIR/" 2>/dev/null || true
     cp "$SCRIPT_DIR/README.md" "$PLUGIN_PRO_TARGET_DIR/" 2>/dev/null || true
+    cp -r "$SCRIPT_DIR/assets" "$PLUGIN_PRO_TARGET_DIR/" 2>/dev/null || true
     echo -e "${GREEN}✔${NC} Files copied to Tabby plugin directory."
 fi
 
