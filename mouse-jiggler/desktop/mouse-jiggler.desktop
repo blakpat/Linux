@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Mouse Jiggler
+GenericName=Mover Ratón
+Comment=Mover píxeles del ratón automáticamente para mantener la sesión activa
+Exec=mouse-jiggler
+Icon=mouse-jiggler-active
+Terminal=false
+Categories=Utility;System;
+Keywords=mouse;jiggler;mover;raton;awake;idle;caffeine;
+X-GNOME-Autostart-enabled=true

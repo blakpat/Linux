@@ -11,6 +11,11 @@ A curated collection of production-ready automation scripts, endpoint integratio
 - **Description**: Automated installation, PAM/NSS configuration, Windows Hello (TPM+PIN), and Entra ID join for Ubuntu 22.04, 24.04 & 25.10.
 - **Modes**: Interactive TUI (Whiptail) & Unattended (`--auto`).
 
+### 🖱️ [Mouse Jiggler for Pop!_OS & Ubuntu](mouse-jiggler/)
+- **Path**: `mouse-jiggler/install.sh`
+- **Description**: Lightweight native GNOME / AppIndicator tray tool & floating widget that moves cursor pixels imperceptibly to prevent screen lock and keep Teams/Slack active.
+- **Features**: Tray toggle (`🟢 ON` / `⚪ OFF`), configurable intervals (10s-5m), smart idle detection, CLI commands (`--toggle`, `--move-now`), and autostart.
+
 ---
 
 ## 🛠️ Usage & Contributions
