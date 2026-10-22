@@ -1,61 +1,32 @@
 # ⚡ Tabby Connection Homepage Pro
 
 [![Tabby](https://img.shields.io/badge/Tabby%20Plugin-v1.3.0-blue?logo=terminal)](https://tabby.sh)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?logo=linux)](https://github.com/blakpat/Linux)
+[![Linux](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-orange?logo=linux)](https://github.com/blakpat/Linux)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-blakpat-purple)](https://github.com/blakpat)
 
-**Tabby Connection Homepage Pro** is a modern, high-productivity dashboard and connection manager plugin for [Tabby Terminal](https://tabby.sh).
+**Tabby Connection Homepage Pro** es un complemento para [Tabby Terminal](https://tabby.sh) que sustituye la pantalla en blanco por un **panel de inicio visual y organizado** con todos tus servidores y conexiones guardadas (SSH, Telnet, Serial, Docker, PowerShell, etc.).
 
-It transforms the default homepage into a sleek, organized command center with **collapsible categories**, **individual category color customization**, **instant category visibility toggles**, **native multi-language support (i18n)**, and refined UX interactions (such as click-outside auto-close and Escape key dismissal).
-
----
-
-## ✨ Key Features & Enhancements
-
-- 🎨 **Modern Frosted-Glass UI / UX**:
-  - Clean cards without intrusive horizontal divider lines.
-  - Category titles with dynamic color accents and badge counters.
-  - Hover micro-interactions and smooth transitions.
-
-- 📂 **Smart Collapsible Categories**:
-  - Collapse or expand any category (including Recent profiles) with a single click on its header.
-  - Collapse state is automatically persisted in local storage across sessions.
-
-- 🌈 **Category Customization Panel**:
-  - Click the **Categorías** button to open the settings panel.
-  - **Color Picker**: Choose a distinct custom color for each category (default: `#ffffff`).
-  - **Visibility Toggles**: Hide or show individual categories with checkboxes or quick eye icons.
-  - Quick action buttons: **Mostrar todas** (Show all) & **Restablecer colores** (Reset colors).
-
-- 🌐 **Multi-Language Switcher (i18n)**:
-  - Language button in the top bar with active language indicator.
-  - Supported languages:
-    - 🇪🇸 **Español**
-    - 🇬🇧 **English**
-    - 🇫🇷 **Français**
-    - 🇩🇪 **Deutsch**
-    - 🇵🇹 **Português**
-    - 🇮🇹 **Italiano**
-    - 🤖 **Automático** (Synchronized with Tabby's global language)
-  - One-click option to sync and apply the chosen language across all of Tabby.
-
-- 🖱️ **Intuitive Dismissal (Click-Outside & Escape)**:
-  - Menus and panels close automatically when clicking outside them.
-  - Clicking inside the category panel allows continuous customization without closing unexpectedly.
-  - Pressing `Esc` closes any active modal or dropdown immediately.
-
-- 🔍 **Instant Fuzzy Search & Quick Connect**:
-  - Debounced search across all connection profiles and hosts.
-  - Quick launch (`Enter` to open first result, `Ctrl+Enter` / `Cmd+Enter` for quick connect).
+Te permite gestionar cientos de conexiones agrupadas por carpetas y categorías, personalizarlas con colores y abrir cualquier servidor con un solo clic.
 
 ---
 
-## 🚀 Quick Installation
+## 📸 ¿Qué mejoras incluye esta versión?
 
-### Option 1: Automated 1-Line Installer (Recommended)
+A diferencia de la versión básica, este complemento añade herramientas prácticas para el día a día:
 
-Clone the repository and run the installer script:
+- 📂 **Plegar / Desplegar categorías**: Haz clic en el nombre de cualquier categoría para colapsarla o expandirla. Así mantienes la pantalla limpia y no tienes que hacer scroll infinito. *El estado se recuerda siempre, incluso al reiniciar Tabby*.
+- 🎨 **Colores personalizados para cada categoría**: Asigna el color que quieras a cada grupo (por ejemplo: rojo para *Producción*, verde para *Desarrollo*, azul para *Infraestructura*).
+- 👁️ **Ocultar categorías enteras**: ¿Tienes grupos que no usas a menudo? Oculta o muestra categorías con un clic sin necesidad de borrar los perfiles.
+- 🌐 **Selector de idioma en la barra superior**: Cambia el idioma de la pantalla de inicio al instante (**Español**, Inglés, Francés, Alemán, Portugués o Italiano) con opción de sincronizarlo con el resto de Tabby.
+- 🖱️ **Cierre automático inteligente**: Al hacer clic fuera de las opciones o pulsar la tecla `Esc`, los menús y paneles se cierran solos.
+- 🔍 **Buscador rápido**: Escribe el nombre del servidor o IP y pulsa `Enter` para conectar inmediatamente.
+
+---
+
+## 🚀 Instalación en 1 minuto
+
+Abre tu terminal y ejecuta:
 
 ```bash
 git clone https://github.com/blakpat/Linux.git
@@ -63,55 +34,56 @@ cd Linux/tabby-connection-homepage-pro
 ./install.sh
 ```
 
-> **Tip (Development / Symlink Mode)**: If you want changes to immediately reflect without copying files again:
-> ```bash
-> ./install.sh --link
-> ```
-
-### Option 2: Manual Installation
-
-1. Copy the plugin directory into Tabby's plugin folder:
-   ```bash
-   mkdir -p ~/.config/tabby/plugins/node_modules/tabby-connection-homepage
-   cp -r dist package.json LICENSE ~/.config/tabby/plugins/node_modules/tabby-connection-homepage/
-   ```
-
-2. Register the dependency in `~/.config/tabby/plugins/package.json`:
-   ```json
-   {
-     "dependencies": {
-       "tabby-connection-homepage": "^1.2.2"
-     }
-   }
-   ```
-
-3. Restart Tabby or press `Ctrl + Shift + R` inside Tabby to reload.
+El script se encarga de todo:
+1. Detecta tu configuración de Tabby.
+2. Hace una copia de seguridad de tu versión anterior (si existía).
+3. Instala y activa el complemento.
+4. Al terminar, **recarga Tabby pulsando `Ctrl + Shift + R`** (o cerrando y abriendo Tabby).
 
 ---
 
-## 🗑️ Uninstallation
+## 🖥️ Cómo usarlo en Tabby
 
-To remove the plugin or restore the previous version:
+### 1. Abrir la página de inicio
+En Tabby, pulsa en el botón **`+`** (Nueva pestaña) y selecciona **Homepage**, o pulsa el icono de casa 🏠 en la barra de herramientas.
+
+### 2. Plegar y desplegar grupos
+- Haz clic sobre el **título de cualquier categoría** (o su flechita) para plegarla o desplegarla.
+- Tabby recordará qué grupos tenías cerrados la próxima vez que abras la aplicación.
+
+### 3. Personalizar colores y visibilidad
+1. Pulsa el botón **Categorías** (icono de paleta 🎨) en la barra superior.
+2. Se abrirá el panel de personalización:
+   - **Cambiar color**: Haz clic en el selector de color al lado del nombre de la categoría y elige el color que prefieras.
+   - **Ocultar/Mostrar**: Desmarca o marca la casilla de cada categoría.
+   - **Botón "Mostrar todas"**: Hace visibles todas las categorías si habías ocultado alguna.
+   - **Botón "Restablecer colores"**: Devuelve todos los colores al blanco original por defecto.
+3. Para cerrar el panel, haz clic fuera de él o pulsa la tecla `Esc`.
+
+### 4. Cambiar de idioma
+1. Haz clic en el botón con el icono del globo terráqueo 🌐 en la barra superior.
+2. Elige tu idioma preferido (**Español**, English, Français, Deutsch, Português, Italiano).
+3. Si lo deseas, puedes pulsar *"Aplicar también al idioma de Tabby"* para que todo el terminal se configure en ese idioma.
+
+### 5. Conectar rápidamente a un servidor
+- **Clic**: Haz clic sobre cualquier tarjeta de conexión para abrir la sesión.
+- **Búsqueda**: Escribe en la barra de búsqueda y pulsa `Enter` para conectar al primer resultado filtrado.
+- **Opciones de conexión**: Haz clic en el botón de tres puntos `⋮` de cada tarjeta para editar, duplicar o eliminar el perfil.
+
+---
+
+## 🗑️ Desinstalación
+
+Si en algún momento quieres volver a la versión por defecto o eliminar el complemento:
 
 ```bash
-cd tabby-connection-homepage-pro
+cd Linux/tabby-connection-homepage-pro
 ./uninstall.sh
 ```
 
 ---
 
-## 🛠️ Configuration & Storage
+## 📄 Licencia
 
-All user preferences are automatically preserved in Tabby's local storage:
-- `tabby_collapsed_groups`: Persisted list of collapsed category IDs.
-- `tabby_hidden_groups`: List of categories hidden from view.
-- `tabby_group_colors`: Custom color mappings per category.
-- `tabby_homepage_lang`: Selected language override code.
-
----
-
-## 📄 License
-
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
-Author: [blakpat](https://github.com/blakpat).
-Original base plugin inspired by [OpaqueGlass/tabby-connection-homepage](https://github.com/OpaqueGlass/tabby-connection-homepage).
+Publicado bajo licencia [GNU Affero General Public License v3.0](LICENSE).  
+Creado y mantenido por [blakpat](https://github.com/blakpat).
