@@ -54,9 +54,18 @@ chmod +x setup_himmelblau.sh verify_installation.sh
 sudo ./setup_himmelblau.sh
 ```
 
+<p align="center">
+  <img src="docs/images/menu_main.png" alt="Himmelblau Main Menu" width="850">
+</p>
+
 Follow the on-screen prompts:
 1. Select your target action (Option `1` for full installation).
 2. Enter your Entra ID domain (e.g. `yourcompany.com` or `yourtenant.onmicrosoft.com`).
+
+<p align="center">
+  <img src="docs/images/menu_config.png" alt="Entra ID Domain Configuration" width="850">
+</p>
+
 3. Enter your corporate UPN (e.g. `user@yourcompany.com`).
 4. Choose whether to grant `sudo` administrative privileges.
 
@@ -94,6 +103,10 @@ Run the standalone verification script at any time to audit system health:
 ```bash
 sudo ./verify_installation.sh
 ```
+
+<p align="center">
+  <img src="docs/images/cli_verification.png" alt="Himmelblau Health Check & Diagnostics" width="850">
+</p>
 
 The tool will inspect:
 1. Systemd services (`himmelblaud`, `himmelblaud-tasks`, `himmelblaud-orchestrator`).
